@@ -27,7 +27,9 @@ const App = () => {
 
     setIsMinting(true);
     // const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
-    const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
+    // const connection = new Connection(clusterApiUrl("mainnet-beta"), "finalized");
+
+    const connection = new Connection("https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/", "finalized");
 
     const metaplex = Metaplex.make(connection).use(
       walletAdapterIdentity(wallet)
