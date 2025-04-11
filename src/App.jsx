@@ -29,8 +29,9 @@ const App = () => {
     // const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
     // const connection = new Connection(clusterApiUrl("mainnet-beta"), "finalized");
 
-    const connection = new Connection("https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/", "finalized");
+    // const connection = new Connection("https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/", "finalized");
 
+    const connection = new Connection("https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd", "confirmed");
     const metaplex = Metaplex.make(connection).use(
       walletAdapterIdentity(wallet)
     );
