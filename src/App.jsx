@@ -34,7 +34,7 @@ const App = () => {
 
     try {
       const { nft } = await metaplex.nfts().create({
-        uri: "https://gateway.pinata.cloud/ipfs/bafkreifcj6cxi2nbdpdzoq2g66fbsedzlt2elxpsvzbrieejh5n6fa5oz4",
+        uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
         name: "My Client NFT",
         sellerFeeBasisPoints: 500,
       });
