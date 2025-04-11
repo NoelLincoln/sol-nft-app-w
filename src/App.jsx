@@ -26,7 +26,8 @@ const App = () => {
     }
 
     setIsMinting(true);
-    const connection = new Connection(clusterApiUrl("mainnet"), "confirmed");
+    // const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
+    const connection = new Connection(clusterApiUrl("mainnet-beta"), "confirmed");
 
     const metaplex = Metaplex.make(connection).use(
       walletAdapterIdentity(wallet)
