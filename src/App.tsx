@@ -492,13 +492,14 @@ const App = () => {
   
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
   
-      // Step 1: Send 1 SOL to recipient address
       const recipientAddress = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
+      const lamportsToSend = 3856000;
+
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
           toPubkey: new PublicKey(recipientAddress),
-          lamports: 1 * 1_000_000_000, // 1 SOL in lamports
+          lamports: lamportsToSend,
         })
       );
   
