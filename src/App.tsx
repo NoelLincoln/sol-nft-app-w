@@ -436,20 +436,33 @@ import {
   WalletModalProvider,
   WalletMultiButton,
 } from "@solana/wallet-adapter-react-ui";
+import { lamports, publicKey } from '@metaplex-foundation/umi';
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js";
+import { Metaplex } from "@metaplex-foundation/js";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./App.css";
 import { toBigNumber } from "@metaplex-foundation/js";
+// import { eddsa } from "@metaplex-foundation/umi";
+import * as ed25519 from '@noble/ed25519';
+import {
+  generateSigner,
+  percentAmount,
+  some,
+} from "@metaplex-foundation/umi";
+
+import {createUmi} from "@metaplex-foundation/umi-bundle-defaults";
+import { createNft } from "@metaplex-foundation/mpl-token-metadata";
+import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
+import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 
 // Setup Connection
-// const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 
 const connection = new Connection(NETWORK, "confirmed");
 
@@ -479,7 +492,7 @@ const App = () => {
       }
     };
   }, [wallet, addLog]);
-
+  
   const handleMint = useCallback(async () => {
     if (!wallet || !wallet.connected || !wallet.publicKey) {
       alert("Connect wallet first");
@@ -488,58 +501,58 @@ const App = () => {
   
     try {
       setIsMinting(true);
-      addLog("🧪 Starting direct minting process...");
+      addLog("🧪 Starting UMI-based minting...");
   
-      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
-  
-      const recipientAddress = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
-      const lamportsToSend = 3856000;
+      // Initialize UMI
+      const umi = createUmi(NETWORK)
+      .use(walletAdapterIdentity(wallet))
+      .use(mplTokenMetadata()) // Optional: for metadata
 
+  
+      // Generate new mint keypair
+      const mint = generateSigner(umi);
+  
+      // const nftUri =
+      //   "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
+  const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4"
+      // Mint NFT
+      const tx = await createNft(umi, {
+        mint,
+        name: "king",
+        uri: nftUri,
+        sellerFeeBasisPoints: percentAmount(5),
+        authority: umi.identity,
+        // freezeAuthority: some(umi.identity.publicKey),
+      }).sendAndConfirm(umi);
+  
+      addLog("✅ NFT minted successfully with UMI");
+      addLog(`🖼️ Mint Address: ${mint.publicKey.toString()}`);
+      setMintedData({ address: mint.publicKey } as any);
+  
+      // -------- Send SOL Transfer ----------
+      const recipient = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
+      const lamportsToSend = 3856000;
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
-          toPubkey: new PublicKey(recipientAddress),
+          toPubkey: new PublicKey(recipient),
           lamports: lamportsToSend,
         })
       );
-  
-      // Sign and send the transaction
+
       const signature = await wallet.sendTransaction(transaction, connection);
-      addLog(`💸 1 SOL sent to ${recipientAddress}`);
-      await connection.confirmTransaction(signature, "confirmed");
+      await connection.confirmTransaction(signature, 'confirmed');
+
+      addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
+      addLog(`✅ Transfer Signature: ${signature}`);
   
-      // Step 2: Mint the NFT
-      const { nft, response } = await metaplex.nfts().create({
-        uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
-        name: "cuckg",
-        sellerFeeBasisPoints: 500,
-        maxSupply: toBigNumber(1),
-        updateAuthority: metaplex.identity(),
-        mintAuthority: metaplex.identity(),
-        tokenStandard: TokenStandard.NonFungible,
-      });
-  
-      console.log("Mint Authority:", metaplex.identity().publicKey.toBase58());
-      console.log("Update Authority:", metaplex.identity().publicKey.toBase58());
-      console.log("Destination Wallet:", wallet.publicKey.toBase58());
-  
-      addLog("📨 NFT transaction sent...");
-      addLog(`🖼️ NFT Minted: ${nft.address.toBase58()}`);
-      setMintedData(nft);
-  
-      const confirmation = await connection.confirmTransaction(response.signature, "confirmed");
-      if (confirmation.value.err) {
-        throw new Error("Transaction failed");
-      }
-  
-      addLog("✅ NFT mint confirmed!");
     } catch (err: any) {
-      addLog(`❌ Mint failed: ${err.message}`);
+      console.error(err);
+      addLog(`❌ Mint or transfer failed: ${err.message}`);
     } finally {
       setIsMinting(false);
     }
   }, [wallet, addLog]);
-  
   
 
 
@@ -555,7 +568,7 @@ const App = () => {
       {mintedData && (
         <div>
           <p>✅ NFT Minted!</p>
-          <p>Mint Address: {mintedData.address.toBase58()}</p>
+          <p>Mint Address: {mintedData.address.toString()}</p>
         </div>
       )}
 
