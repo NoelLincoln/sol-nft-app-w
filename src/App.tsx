@@ -447,8 +447,8 @@ import "./App.css";
 import { toBigNumber } from "@metaplex-foundation/js";
 
 // Setup Connection
-// const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 
 const connection = new Connection(NETWORK, "confirmed");
 
@@ -544,8 +544,8 @@ const App = () => {
   
       // Mint the NFT and specify the wallet as the destination
       const { nft, response } = await metaplex.nfts().create({
-        // uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
-        uri: "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4",
+        uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
+        // uri: "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4",
         name: "cuckg",
         sellerFeeBasisPoints: 500,
         maxSupply: toBigNumber(1),
