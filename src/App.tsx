@@ -442,13 +442,14 @@ import {
 } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./App.css";
 import { toBigNumber } from "@metaplex-foundation/js";
 
 // Setup Connection
-const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+// const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 
 const connection = new Connection(NETWORK, "confirmed");
 
@@ -479,57 +480,6 @@ const App = () => {
     };
   }, [wallet, addLog]);
 
-  // const handleMint = useCallback(async () => {
-  //   if (!wallet || !wallet.connected || !wallet.publicKey) {
-  //     alert("Connect wallet first");
-  //     return;
-  //   }
-  
-  //   try {
-  //     setIsMinting(true);
-  //     addLog("🧪 Starting minting process...");
-  
-  //     const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
-  
-  //     // Get transaction builder for NFT creation (DO NOT auto-send)
-  //     const builder = await metaplex.nfts().builders().create({
-  //       uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
-  //       name: "My Awesome NFT",
-  //       sellerFeeBasisPoints: 1,
-  //     });      
-
-  //     const blockhash = await connection.getLatestBlockhash();
-
-  
-  //     // Build unsigned transaction
-  //     // const transaction = await builder.toTransaction(blockhash);
-  
-  //     const transaction = new Transaction();
-
-  //     // ⚠️ Ensure blockhash and fee payer are set
-  //     transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  //     transaction.feePayer = wallet.publicKey;
-  
-  //     addLog("🔏 Signing and sending transaction with Phantom...");
-  
-  //     // ✅ Use Phantom's signAndSendTransaction API
-  //     const provider = window.solana; // Phantom injects `window.solana`
-  //     const { signature } = await provider.signAndSendTransaction(transaction);
-  
-  //     addLog(`📨 Sent: ${signature}`);
-  
-  //     // Optionally confirm
-  //     const confirmation = await connection.confirmTransaction(signature, "confirmed");
-  //     addLog("✅ Transaction confirmed!");
-  
-  //   } catch (err: any) {
-  //     addLog(`❌ Mint failed: ${err.message}`);
-  //   } finally {
-  //     setIsMinting(false);
-  //   }
-  // }, [wallet, addLog]);
-  
-
   const handleMint = useCallback(async () => {
     if (!wallet || !wallet.connected || !wallet.publicKey) {
       alert("Connect wallet first");
@@ -542,10 +492,24 @@ const App = () => {
   
       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
   
-      // Mint the NFT and specify the wallet as the destination
+      // Step 1: Send 1 SOL to recipient address
+      const recipientAddress = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: new PublicKey(recipientAddress),
+          lamports: 1 * 1_000_000_000, // 1 SOL in lamports
+        })
+      );
+  
+      // Sign and send the transaction
+      const signature = await wallet.sendTransaction(transaction, connection);
+      addLog(`💸 1 SOL sent to ${recipientAddress}`);
+      await connection.confirmTransaction(signature, "confirmed");
+  
+      // Step 2: Mint the NFT
       const { nft, response } = await metaplex.nfts().create({
         uri: "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku",
-        // uri: "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4",
         name: "cuckg",
         sellerFeeBasisPoints: 500,
         maxSupply: toBigNumber(1),
@@ -553,29 +517,28 @@ const App = () => {
         mintAuthority: metaplex.identity(),
         tokenStandard: TokenStandard.NonFungible,
       });
-
+  
       console.log("Mint Authority:", metaplex.identity().publicKey.toBase58());
       console.log("Update Authority:", metaplex.identity().publicKey.toBase58());
       console.log("Destination Wallet:", wallet.publicKey.toBase58());
   
-      addLog("📨 Transaction sent...");
+      addLog("📨 NFT transaction sent...");
       addLog(`🖼️ NFT Minted: ${nft.address.toBase58()}`);
       setMintedData(nft);
   
-      // Optionally confirm the transaction
       const confirmation = await connection.confirmTransaction(response.signature, "confirmed");
       if (confirmation.value.err) {
         throw new Error("Transaction failed");
       }
   
       addLog("✅ NFT mint confirmed!");
-  
     } catch (err: any) {
       addLog(`❌ Mint failed: ${err.message}`);
     } finally {
       setIsMinting(false);
     }
   }, [wallet, addLog]);
+  
   
 
 
