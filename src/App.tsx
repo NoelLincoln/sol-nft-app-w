@@ -436,7 +436,7 @@ import {
   WalletModalProvider,
   WalletMultiButton,
 } from "@solana/wallet-adapter-react-ui";
-import { lamports, publicKey } from '@metaplex-foundation/umi';
+import { keypairIdentity, lamports, publicKey } from '@metaplex-foundation/umi';
 import {
   ConnectionProvider,
   WalletProvider,
@@ -462,8 +462,8 @@ import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
-
+// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+const NETWORK = "https://api.mainnet-beta.solana.com/";
 const connection = new Connection(NETWORK, "confirmed");
 
 const App = () => {
@@ -504,9 +504,13 @@ const App = () => {
       addLog("🧪 Starting UMI-based minting...");
   
       // Initialize UMI
+      // const umi = createUmi(NETWORK)
+      // .use(walletAdapterIdentity(wallet))
+      // .use(mplTokenMetadata())
+
       const umi = createUmi(NETWORK)
       .use(walletAdapterIdentity(wallet))
-      .use(mplTokenMetadata()) // Optional: for metadata
+      .use(mplTokenMetadata());
 
   
       // Generate new mint keypair
@@ -515,14 +519,16 @@ const App = () => {
       const nftUri ="https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
   // const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4"
       // Mint NFT
-      const tx = await createNft(umi, {
+      const tx =await createNft(umi, {
         mint,
         name: "king",
         uri: nftUri,
         sellerFeeBasisPoints: percentAmount(5),
         authority: umi.identity,
-        // freezeAuthority: some(umi.identity.publicKey),
+        updateAuthority:umi.identity,
+        // optionally: freezeAuthority: some(umi.identity.publicKey),
       }).sendAndConfirm(umi);
+      
   
       addLog("✅ NFT minted successfully with UMI");
       addLog(`🖼️ Mint Address: ${mint.publicKey.toString()}`);
@@ -539,11 +545,12 @@ const App = () => {
         })
       );
 
-      const signature = await wallet.sendTransaction(transaction, connection);
+      const signature = await signAndSendTransaction(wallet, transaction);
       await connection.confirmTransaction(signature, 'confirmed');
-
+      
       addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
-      addLog(`✅ Transfer Signature: ${signature}`);
+      addLog(`✅ Transfer Signature: ${signature}`);      
+
   
     } catch (err: any) {
       console.error(err);
@@ -611,7 +618,7 @@ const pollSignatureStatus = async (signature: string, connection: Connection, ad
 
 // Setup Providers
 const AppWithProviders = () => {
-  const network = "devnet"; // or "mainnet-beta" based on your environment
+  const network = "mainnet-beta"; // or "mainnet-beta" based on your environment
   const endpoint = useMemo(() => NETWORK, []);
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
