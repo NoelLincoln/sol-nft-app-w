@@ -10,8 +10,8 @@ import { clusterApiUrl } from "@solana/web3.js";
 export const WalletConnectionProvider = ({ children }) => {
   // const network = 'devnet'; // Or 'mainnet-beta' / 'testnet'
   // const network = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-  // const network = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
-  const network = "https://api.mainnet-beta.solana.com";
+  const network = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+  // const network = "https://api.mainnet-beta.solana.com";
   const endpoint = useMemo(() => clusterApiUrl(network), [network]);
 
   const wallets = useMemo(
