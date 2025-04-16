@@ -15,7 +15,7 @@ import {
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { Metaplex } from "@metaplex-foundation/js";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferInstruction } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createTransferInstruction } from "@solana/spl-token";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./App.css";
 import { toBigNumber } from "@metaplex-foundation/js";
@@ -33,6 +33,9 @@ import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-ad
 import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 import getProvider from "./utils/getProvider";
 import { PhantomProvider } from "../types";
+import {
+  getAssociatedTokenAddress
+} from '@solana/spl-token';
 
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
@@ -93,7 +96,8 @@ const App = () => {
 
       const mint = generateSigner(umi);
 
-      const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
+      const nftUri =
+        "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
 
       await createNft(umi, {
         mint,
@@ -111,53 +115,51 @@ const App = () => {
 
       const transaction = new Transaction();
 
-      // Get source ATA for the mint authority (umi.identity)
+      const mintPublicKey = new PublicKey(mint.publicKey);
+      const authorityPublicKey = new PublicKey(umi.identity.publicKey.toString());
+
       const sourceTokenAccount = await getAssociatedTokenAddress(
-        new PublicKey(mint.publicKey),
-        new PublicKey(umi.identity.publicKey.toString()) // Mint authority
+        mintPublicKey,
+        authorityPublicKey
       );
 
-      // Get destination ATA for the user
       const destinationTokenAccount = await getAssociatedTokenAddress(
-        new PublicKey(mint.publicKey),
-        wallet.publicKey
+        mintPublicKey,
+        userWallet
       );
 
-      // Create destination ATA if it doesn't exist
-      const destAccountInfo = await connection.getAccountInfo(destinationTokenAccount);
+      const destAccountInfo = await connection.getAccountInfo(
+        destinationTokenAccount
+      );
       if (!destAccountInfo) {
         const ataInstruction = createAssociatedTokenAccountInstruction(
-          wallet.publicKey,                // Payer
-          destinationTokenAccount,         // Destination
-          wallet.publicKey,                // Owner of destination
-          new PublicKey(mint.publicKey)    // Mint
+          userWallet, // payer
+          destinationTokenAccount,
+          userWallet,
+          mintPublicKey
         );
         transaction.add(ataInstruction);
       }
 
-      // Transfer from mint authority to user
       const transferInstruction = createTransferInstruction(
-        sourceTokenAccount,                                // ✅ Correct source ATA
-        destinationTokenAccount,                           // ✅ Correct destination ATA
-        new PublicKey(umi.identity.publicKey.toString()),  // Authority (mint authority)
-        1,                                                 // Amount
+        sourceTokenAccount,
+        destinationTokenAccount,
+        authorityPublicKey,
+        1,
         [],
         TOKEN_PROGRAM_ID
       );
       transaction.add(transferInstruction);
 
-
-      // Fetch the latest blockhash
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
-      transaction.feePayer = wallet.publicKey;
+      transaction.feePayer = userWallet;
 
-      // Simulate the transaction
-      await connection.simulateTransaction(transaction);
+      // 🚨 Important: Do NOT partially sign the transaction yourself
+      // Phantom wants the transaction to be unsigned until passed to them
 
       // Use Phantom's signAndSendTransaction method
-      const signature = await signAndSendTransaction(provider, transaction);
-
+      const { signature } = await provider.signAndSendTransaction(transaction);
       await connection.confirmTransaction(signature, "confirmed");
 
       addLog(`🎉 NFT transferred to ${userWallet.toBase58()}`);
@@ -169,6 +171,7 @@ const App = () => {
       setIsMinting(false);
     }
   }, [wallet, addLog]);
+
   return (
     <div className="app">
       <WalletMultiButton />
