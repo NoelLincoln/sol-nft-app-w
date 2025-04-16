@@ -36,7 +36,8 @@ import { PhantomProvider } from "../types";
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
 // const NETWORK = "https://api.devnet.solana.com/";
-const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+const NETWORK = "https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/"
+// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 // const NETWORK = "https://api.mainnet-beta.solana.com"
 // const NETWORK = "https://api.mainnet-beta.solana.com/";
 const connection = new Connection(NETWORK, "confirmed");
@@ -96,7 +97,7 @@ const App = () => {
       const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
 
       // Mint NFT
-      const nftTransaction = await createNft(umi, {
+      await createNft(umi, {
         mint,
         name: "My Awesome NFT",
         uri: nftUri,
@@ -107,36 +108,29 @@ const App = () => {
 
       addLog("✅ NFT minted successfully with UMI");
       addLog(`🖼️ Mint Address: ${mint.publicKey.toString()}`);
-      setMintedData({ address: mint.publicKey } as any);
 
-      // -------- Send SOL Transfer ----------
-      const recipient = wallet.publicKey.toBase58(); // Send to the user's wallet
-      const lamportsToSend = 3856000;
-
-      // Fetch the latest blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
-
-      // Create transaction
-      const transaction = new Transaction().add(
+      // Transfer the NFT to the user's wallet
+      const userWallet = wallet.publicKey;
+      const nftTransferTransaction = new Transaction().add(
         SystemProgram.transfer({
-          fromPubkey: wallet.publicKey,
-          toPubkey: new PublicKey(recipient),
-          lamports: lamportsToSend,
+          fromPubkey: new PublicKey(umi.identity.publicKey),
+          toPubkey: userWallet,
+          lamports: 1, // Transfer 1 NFT (NFTs are represented as tokens with 0 decimals)
         })
       );
 
       // Assign recent blockhash and fee payer
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = wallet.publicKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      nftTransferTransaction.recentBlockhash = blockhash;
+      nftTransferTransaction.feePayer = new PublicKey(umi.identity.publicKey);
 
       // Use Phantom's signAndSendTransaction method
-      // const { signature } = await provider.signAndSendTransaction(transaction);
-      const signature = await signAndSendTransaction(provider, transaction);
+      const signature = await signAndSendTransaction(provider, nftTransferTransaction);
 
       await connection.confirmTransaction(signature, "confirmed");
 
-      addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
-      addLog(`✅ Transfer Signature: ${signature}`);
+      addLog(`🎉 NFT transferred to ${userWallet.toBase58()}`);
+      setMintedData({ address: mint.publicKey } as any);
     } catch (err: any) {
       console.error(err);
       addLog(`❌ Mint or transfer failed: ${err.message}`);
