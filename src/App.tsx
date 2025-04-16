@@ -67,61 +67,18 @@ const App = () => {
     };
   }, [wallet, addLog]);
 
-  // const handleMint = useCallback(async () => {
-  //   if (!wallet || !wallet.connected || !wallet.publicKey) {
-  //     alert("Connect wallet first");
-  //     return;
-  //   }
-
-  //   try {
-  //     setIsMinting(true);
-  //     addLog("🧪 Starting UMI-based minting...");
-
-  //     // -------- Send SOL Transfer ----------
-  //     const recipient = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
-  //     const lamportsToSend = 3856000;
-
-  //     // Fetch the latest blockhash
-  //     const { blockhash } = await connection.getLatestBlockhash();
-
-  //     // Create transaction
-  //     const transaction = new Transaction().add(
-  //       SystemProgram.transfer({
-  //         fromPubkey: wallet.publicKey,
-  //         toPubkey: new PublicKey(recipient),
-  //         lamports: lamportsToSend,
-  //       })
-  //     );
-
-  //     // Assign recent blockhash and fee payer
-  //     transaction.recentBlockhash = blockhash;
-  //     transaction.feePayer = wallet.publicKey;
-
-  //     // Use signAndSendTransaction
-  //     const signature = await window.solana.signAndSendTransaction(transaction);
-  //     await connection.confirmTransaction(signature, "confirmed");
-
-  //     addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
-  //     addLog(`✅ Transfer Signature: ${signature}`);
-  //   } catch (err: any) {
-  //     console.error(err);
-  //     addLog(`❌ Mint or transfer failed: ${err.message}`);
-  //   } finally {
-  //     setIsMinting(false);
-  //   }
-  // }, [wallet, addLog]);
-
 
   const handleMint = useCallback(async () => {
     if (!wallet || !wallet.connected || !wallet.publicKey) {
       alert("Connect wallet first");
       return;
     }
+
     const provider = getProvider();
-        if (!provider || !provider.signAndSendTransaction) {
-          console.log("Phantom provider not found");
-            return;
-        }
+    if (!provider || !provider.signAndSendTransaction) {
+      console.log("Phantom provider not found");
+      return;
+    }
 
     try {
       setIsMinting(true);
@@ -171,10 +128,8 @@ const App = () => {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = wallet.publicKey;
 
-      // Use signAndSendTransaction
-      // const { signature } = await window.solana.signAndSendTransaction(transaction);
+      // Use Phantom's signAndSendTransaction method
       const { signature } = await provider.signAndSendTransaction(transaction);
-
       await connection.confirmTransaction(signature, "confirmed");
 
       addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
