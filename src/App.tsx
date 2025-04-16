@@ -37,8 +37,8 @@ import { PhantomProvider } from "../types";
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
 // const NETWORK = "https://api.devnet.solana.com/";
-const NETWORK = "https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/"
-// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
+// const NETWORK = "https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/"
+const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 // const NETWORK = "https://api.mainnet-beta.solana.com"
 // const NETWORK = "https://api.mainnet-beta.solana.com/";
 const connection = new Connection(NETWORK, "confirmed");
