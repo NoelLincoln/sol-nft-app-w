@@ -459,6 +459,7 @@ import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { createNft } from "@metaplex-foundation/mpl-token-metadata";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
+import getProvider from "./utils/getProvider";
 
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
@@ -544,6 +545,11 @@ const App = () => {
       alert("Connect wallet first");
       return;
     }
+    const provider = getProvider();
+        if (!provider || !provider.signAndSendTransaction) {
+          console.log("Phantom provider not found");
+            return;
+        }
 
     try {
       setIsMinting(true);
@@ -594,7 +600,9 @@ const App = () => {
       transaction.feePayer = wallet.publicKey;
 
       // Use signAndSendTransaction
-      const { signature } = await window.solana.signAndSendTransaction(transaction);
+      // const { signature } = await window.solana.signAndSendTransaction(transaction);
+      const { signature } = await provider.signAndSendTransaction(transaction);
+
       await connection.confirmTransaction(signature, "confirmed");
 
       addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
@@ -634,21 +642,20 @@ const App = () => {
   );
 };
 
-// Sign and send the transaction function (using Phantom's signTransaction and sendTransaction methods)
-// const signAndSendTransaction = async (wallet: any, transaction: Transaction) => {
-//   try {
-//     // Phantom wallet has its own signTransaction and sendTransaction methods
-//     const signedTransaction = await wallet.signTransaction(transaction);
+const signAndSendTransaction = async (wallet: any, transaction: Transaction) => {
+  try {
+    // Phantom wallet has its own signTransaction and sendTransaction methods
+    const signedTransaction = await wallet.signTransaction(transaction);
 
-//     // Send the signed transaction
-//     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+    // Send the signed transaction
+    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
-//     // Return the signature of the sent transaction
-//     return signature;
-//   } catch (error) {
-//     throw new Error(`Transaction failed: ${error.message}`);
-//   }
-// };
+    // Return the signature of the sent transaction
+    return signature;
+  } catch (error) {
+    throw new Error(`Transaction failed: ${error.message}`);
+  }
+};
 
 // Poll signature status
 const pollSignatureStatus = async (signature: string, connection: Connection, addLog: (message: string) => void) => {
