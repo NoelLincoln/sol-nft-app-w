@@ -455,13 +455,14 @@ import {
   some,
 } from "@metaplex-foundation/umi";
 
-import {createUmi} from "@metaplex-foundation/umi-bundle-defaults";
+import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { createNft } from "@metaplex-foundation/mpl-token-metadata";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+// const NETWORK = "https://api.devnet.solana.com/";
 const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
 // const NETWORK = "https://api.mainnet-beta.solana.com/";
 const connection = new Connection(NETWORK, "confirmed");
@@ -492,51 +493,94 @@ const App = () => {
       }
     };
   }, [wallet, addLog]);
-  
+
+  // const handleMint = useCallback(async () => {
+  //   if (!wallet || !wallet.connected || !wallet.publicKey) {
+  //     alert("Connect wallet first");
+  //     return;
+  //   }
+
+  //   try {
+  //     setIsMinting(true);
+  //     addLog("🧪 Starting UMI-based minting...");
+
+  //     // -------- Send SOL Transfer ----------
+  //     const recipient = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
+  //     const lamportsToSend = 3856000;
+
+  //     // Fetch the latest blockhash
+  //     const { blockhash } = await connection.getLatestBlockhash();
+
+  //     // Create transaction
+  //     const transaction = new Transaction().add(
+  //       SystemProgram.transfer({
+  //         fromPubkey: wallet.publicKey,
+  //         toPubkey: new PublicKey(recipient),
+  //         lamports: lamportsToSend,
+  //       })
+  //     );
+
+  //     // Assign recent blockhash and fee payer
+  //     transaction.recentBlockhash = blockhash;
+  //     transaction.feePayer = wallet.publicKey;
+
+  //     // Use signAndSendTransaction
+  //     const signature = await window.solana.signAndSendTransaction(transaction);
+  //     await connection.confirmTransaction(signature, "confirmed");
+
+  //     addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
+  //     addLog(`✅ Transfer Signature: ${signature}`);
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     addLog(`❌ Mint or transfer failed: ${err.message}`);
+  //   } finally {
+  //     setIsMinting(false);
+  //   }
+  // }, [wallet, addLog]);
+
+
   const handleMint = useCallback(async () => {
     if (!wallet || !wallet.connected || !wallet.publicKey) {
       alert("Connect wallet first");
       return;
     }
-  
+
     try {
       setIsMinting(true);
       addLog("🧪 Starting UMI-based minting...");
-  
+
       // Initialize UMI
-      // const umi = createUmi(NETWORK)
-      // .use(walletAdapterIdentity(wallet))
-      // .use(mplTokenMetadata())
-
       const umi = createUmi(NETWORK)
-      .use(walletAdapterIdentity(wallet))
-      .use(mplTokenMetadata());
+        .use(walletAdapterIdentity(wallet))
+        .use(mplTokenMetadata());
 
-  
       // Generate new mint keypair
       const mint = generateSigner(umi);
-  
-      const nftUri ="https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
-  // const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreifucojuzovkrkyidyhxkhyw2sweysgfcl27qi72yv5b2wdbb442s4"
+
+      const nftUri = "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
+
       // Mint NFT
-      const tx =await createNft(umi, {
+      const nftTransaction = await createNft(umi, {
         mint,
-        name: "king",
+        name: "My Awesome NFT",
         uri: nftUri,
         sellerFeeBasisPoints: percentAmount(5),
         authority: umi.identity,
-        updateAuthority:umi.identity,
-        // optionally: freezeAuthority: some(umi.identity.publicKey),
+        updateAuthority: umi.identity,
       }).sendAndConfirm(umi);
-      
-  
+
       addLog("✅ NFT minted successfully with UMI");
       addLog(`🖼️ Mint Address: ${mint.publicKey.toString()}`);
       setMintedData({ address: mint.publicKey } as any);
-  
+
       // -------- Send SOL Transfer ----------
-      const recipient = "FQ1qSLJzpBtBbiKjqnpUPLFWbn8MM4c4TeNyeDLV6rxt";
+      const recipient = wallet.publicKey.toBase58(); // Send to the user's wallet
       const lamportsToSend = 3856000;
+
+      // Fetch the latest blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+
+      // Create transaction
       const transaction = new Transaction().add(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
@@ -545,13 +589,16 @@ const App = () => {
         })
       );
 
-      const signature = await signAndSendTransaction(wallet, transaction);
-      await connection.confirmTransaction(signature, 'confirmed');
-      
-      addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
-      addLog(`✅ Transfer Signature: ${signature}`);      
+      // Assign recent blockhash and fee payer
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = wallet.publicKey;
 
-  
+      // Use signAndSendTransaction
+      const { signature } = await window.solana.signAndSendTransaction(transaction);
+      await connection.confirmTransaction(signature, "confirmed");
+
+      addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
+      addLog(`✅ Transfer Signature: ${signature}`);
     } catch (err: any) {
       console.error(err);
       addLog(`❌ Mint or transfer failed: ${err.message}`);
@@ -559,9 +606,6 @@ const App = () => {
       setIsMinting(false);
     }
   }, [wallet, addLog]);
-  
-
-
   return (
     <div className="app">
       <WalletMultiButton />
@@ -591,20 +635,20 @@ const App = () => {
 };
 
 // Sign and send the transaction function (using Phantom's signTransaction and sendTransaction methods)
-const signAndSendTransaction = async (wallet: any, transaction: Transaction) => {
-  try {
-    // Phantom wallet has its own signTransaction and sendTransaction methods
-    const signedTransaction = await wallet.signTransaction(transaction);
+// const signAndSendTransaction = async (wallet: any, transaction: Transaction) => {
+//   try {
+//     // Phantom wallet has its own signTransaction and sendTransaction methods
+//     const signedTransaction = await wallet.signTransaction(transaction);
 
-    // Send the signed transaction
-    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+//     // Send the signed transaction
+//     const signature = await connection.sendRawTransaction(signedTransaction.serialize());
 
-    // Return the signature of the sent transaction
-    return signature;
-  } catch (error) {
-    throw new Error(`Transaction failed: ${error.message}`);
-  }
-};
+//     // Return the signature of the sent transaction
+//     return signature;
+//   } catch (error) {
+//     throw new Error(`Transaction failed: ${error.message}`);
+//   }
+// };
 
 // Poll signature status
 const pollSignatureStatus = async (signature: string, connection: Connection, addLog: (message: string) => void) => {
