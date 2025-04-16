@@ -31,6 +31,7 @@ import { createNft } from "@metaplex-foundation/mpl-token-metadata";
 import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
 import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 import getProvider from "./utils/getProvider";
+import { PhantomProvider } from "../types";
 
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
@@ -129,7 +130,9 @@ const App = () => {
       transaction.feePayer = wallet.publicKey;
 
       // Use Phantom's signAndSendTransaction method
-      const { signature } = await provider.signAndSendTransaction(transaction);
+      // const { signature } = await provider.signAndSendTransaction(transaction);
+      const signature = await signAndSendTransaction(provider, transaction);
+
       await connection.confirmTransaction(signature, "confirmed");
 
       addLog(`💸 Sent ${lamportsToSend / 1e9} SOL to ${recipient}`);
@@ -169,18 +172,13 @@ const App = () => {
   );
 };
 
-const signAndSendTransaction = async (wallet: any, transaction: Transaction) => {
+const signAndSendTransaction = async (provider: PhantomProvider, transaction: Transaction): Promise<string> => {
   try {
-    // Phantom wallet has its own signTransaction and sendTransaction methods
-    const signedTransaction = await wallet.signTransaction(transaction);
-
-    // Send the signed transaction
-    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
-
-    // Return the signature of the sent transaction
+    const { signature } = await provider.signAndSendTransaction(transaction);
     return signature;
   } catch (error) {
-    throw new Error(`Transaction failed: ${error.message}`);
+    console.warn(error);
+    throw new Error(error.message);
   }
 };
 
