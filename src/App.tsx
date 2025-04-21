@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
-import { Nft } from "@metaplex-foundation/js";
-import { useWallet } from "@solana/wallet-adapter-react";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Connection,
+  PublicKey,
+  Transaction,
+} from "@solana/web3.js";
 import {
   WalletModalProvider,
   WalletMultiButton,
@@ -11,85 +13,86 @@ import {
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js";
+import { Metaplex, walletAdapterIdentity, keypairIdentity } from "@metaplex-foundation/js";
+// import { createNft } from "@metaplex-foundation/js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./App.css";
-import { toBigNumber } from "@metaplex-foundation/js"; // Import toBigNumber
-import signAndSendTransaction from "./utils/signAndSendTransaction";
-import {
-  createMint,
-  getOrCreateAssociatedTokenAccount,
-  mintTo,
-} from "@solana/spl-token";
-import { Keypair } from "@solana/web3.js";
-import { PhantomProvider } from "./types";
-// Setup Connection
-// const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-// const NETWORK = "https://api.devnet.solana.com";
+import { toBigNumber } from "@metaplex-foundation/js";
+import { Nft } from "@metaplex-foundation/js";
+
+// Constants
 const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
 const connection = new Connection(NETWORK, "finalized");
 
+// Helper to get the Phantom provider directly
+const getProvider = (): any => {
+  if ("phantom" in window) {
+    const provider = (window as any).phantom?.solana;
+    if (provider?.isPhantom) {
+      return provider;
+    }
+  }
+  window.open("https://phantom.app/", "_blank");
+};
+
 const App = () => {
-  const wallet = useWallet();
   const [logs, setLogs] = useState<string[]>([]);
   const [mintedData, setMintedData] = useState<Nft | null>(null);
   const [isMinting, setIsMinting] = useState(false);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const addLog = useCallback((message: string) => {
     setLogs((prev) => [...prev, message]);
   }, []);
 
   useEffect(() => {
-    if (!wallet) return;
-
-    // Ensure wallet is connected before accessing publicKey
-    if (wallet.connected && wallet.publicKey) {
-      addLog(`✅ Connected to ${wallet.publicKey.toBase58()}`);
-    } else {
-      addLog("⚠️ Wallet not connected");
-    }
-
-    return () => {
-      if (wallet.disconnecting) {
-        addLog("⚠️ Disconnecting...");
-      }
-    };
-  }, [wallet, addLog]);
+    const provider = getProvider();
+    provider?.connect().then(({ publicKey }: any) => {
+      setWalletAddress(publicKey.toString());
+      addLog(`✅ Connected to ${publicKey.toString()}`);
+    }).catch(() => addLog("⚠️ Wallet connection failed"));
+  }, [addLog]);
 
   const handleMint = async () => {
     try {
       setIsMinting(true);
-      const metadataUri =
-        "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
   
-      if (!wallet?.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
+      const provider = getProvider();
+      if (!provider?.publicKey) {
         addLog("⚠️ Wallet not connected properly.");
         return;
       }
   
-      const userSigner = {
-        publicKey: wallet.publicKey,
-        signTransaction: wallet.signTransaction,
-        signAllTransactions: wallet.signAllTransactions,
-      };
+      const metadataUri = "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
+      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(provider));
   
-      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
-      addLog("⚙️ Minting NFT...");
-
-      console.log("mint authority", metaplex.identity().publicKey.toBase58());
+      addLog("⚙️ Creating NFT builder...");
   
-      const { nft } = await metaplex.nfts().create({
+      const builder = await metaplex.nfts().builders().create({
         uri: metadataUri,
         name: "Cool NFT",
         symbol: "COOL",
-        sellerFeeBasisPoints: 0, // 0% royalties
+        sellerFeeBasisPoints: 0,
         maxSupply: toBigNumber(1),
-        updateAuthority: metaplex.identity(), 
-        mintAuthority: metaplex.identity(),
       });
   
-      setMintedData(nft);
-      console.log("nft minted data", nft);
+      const latestBlockhash = await connection.getLatestBlockhash();
+  
+      const transaction = await builder.toTransaction(latestBlockhash);
+  
+      addLog("📤 Signing and sending transaction...");
+  
+      const { signature } = await provider.signAndSendTransaction(transaction);
+      await connection.confirmTransaction(signature, "finalized");
+  
+      addLog("⏳ Fetching minted NFT...");
+      const mintAddress = builder.getContext().mintAddress;
+      const nft = await metaplex.nfts().findByMint({ mintAddress });
+      if (nft.model === "nft") {
+        setMintedData(nft);
+      } else {
+        addLog("⚠️ Minted item is not an NFT.");
+      }
       addLog(`✅ NFT minted! Mint address: ${nft.address.toBase58()}`);
     } catch (error: any) {
       console.error("❌ Mint failed:", error);
@@ -128,11 +131,10 @@ const App = () => {
   );
 };
 
-// Setup Providers
+// Wrap with providers
 const AppWithProviders = () => {
-  const network = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-  const endpoint = useMemo(() => network, []);
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  const endpoint = NETWORK;
+  const wallets = [new PhantomWalletAdapter()];
 
   return (
     <ConnectionProvider endpoint={endpoint}>
