@@ -1,50 +1,33 @@
 import React, { useCallback, useEffect, useState, useMemo } from "react";
-import { Connection, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { Nft } from "@metaplex-foundation/js";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { TokenStandard } from "@metaplex-foundation/mpl-token-metadata";
 import {
   WalletModalProvider,
   WalletMultiButton,
 } from "@solana/wallet-adapter-react-ui";
-import { keypairIdentity, lamports, publicKey } from '@metaplex-foundation/umi';
 import {
   ConnectionProvider,
   WalletProvider,
 } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { Metaplex } from "@metaplex-foundation/js";
-import { PublicKey, SystemProgram } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, createAssociatedTokenAccountInstruction, createTransferInstruction } from "@solana/spl-token";
+import { Metaplex, walletAdapterIdentity } from "@metaplex-foundation/js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import "./App.css";
-import { toBigNumber } from "@metaplex-foundation/js";
-// import { eddsa } from "@metaplex-foundation/umi";
-import * as ed25519 from '@noble/ed25519';
+import { toBigNumber } from "@metaplex-foundation/js"; // Import toBigNumber
+import signAndSendTransaction from "./utils/signAndSendTransaction";
 import {
-  generateSigner,
-  percentAmount,
-  some,
-} from "@metaplex-foundation/umi";
-
-import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
-import { createNft } from "@metaplex-foundation/mpl-token-metadata";
-import { walletAdapterIdentity } from "@metaplex-foundation/umi-signer-wallet-adapters";
-import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
-import getProvider from "./utils/getProvider";
-import { PhantomProvider } from "../types";
-import {
-  getAssociatedTokenAddress
-} from '@solana/spl-token';
-
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
+import { Keypair } from "@solana/web3.js";
+import { PhantomProvider } from "./types";
 // Setup Connection
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-// const NETWORK = "https://api.devnet.solana.com/";
-// const NETWORK = "https://alpha-tame-dinghy.solana-devnet.quiknode.pro/24f6b6225e2dee000e1a6e7f1afecbba8980decb/"
-const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd"
-// const NETWORK = "https://api.mainnet-beta.solana.com"
-// const NETWORK = "https://api.mainnet-beta.solana.com/";
-const connection = new Connection(NETWORK, "confirmed");
+// const NETWORK = "https://api.devnet.solana.com";
+const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+const connection = new Connection(NETWORK, "finalized");
 
 const App = () => {
   const wallet = useWallet();
@@ -73,104 +56,49 @@ const App = () => {
     };
   }, [wallet, addLog]);
 
-
-  const handleMint = useCallback(async () => {
-    if (!wallet || !wallet.connected || !wallet.publicKey) {
-      alert("Connect wallet first");
-      return;
-    }
-
-    const provider = getProvider();
-    if (!provider || !provider.signAndSendTransaction) {
-      console.log("Phantom provider not found");
-      return;
-    }
-
+  const handleMint = async () => {
     try {
       setIsMinting(true);
-      addLog("🧪 Starting UMI-based minting...");
-
-      const umi = createUmi(NETWORK)
-        .use(walletAdapterIdentity(wallet))
-        .use(mplTokenMetadata());
-
-      const mint = generateSigner(umi);
-
-      const nftUri =
+      const metadataUri =
         "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
-
-      await createNft(umi, {
-        mint,
-        name: "My Awesome NFT",
-        uri: nftUri,
-        sellerFeeBasisPoints: percentAmount(5),
-        authority: umi.identity,
-        updateAuthority: umi.identity,
-      }).sendAndConfirm(umi);
-
-      addLog("✅ NFT minted successfully with UMI");
-      addLog(`🖼️ Mint Address: ${mint.publicKey.toString()}`);
-
-      const userWallet = wallet.publicKey;
-
-      const transaction = new Transaction();
-
-      const mintPublicKey = new PublicKey(mint.publicKey);
-      const authorityPublicKey = new PublicKey(umi.identity.publicKey.toString());
-
-      const sourceTokenAccount = await getAssociatedTokenAddress(
-        mintPublicKey,
-        authorityPublicKey
-      );
-
-      const destinationTokenAccount = await getAssociatedTokenAddress(
-        mintPublicKey,
-        userWallet
-      );
-
-      const destAccountInfo = await connection.getAccountInfo(
-        destinationTokenAccount
-      );
-      if (!destAccountInfo) {
-        const ataInstruction = createAssociatedTokenAccountInstruction(
-          userWallet, // payer
-          destinationTokenAccount,
-          userWallet,
-          mintPublicKey
-        );
-        transaction.add(ataInstruction);
+  
+      if (!wallet?.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
+        addLog("⚠️ Wallet not connected properly.");
+        return;
       }
+  
+      const userSigner = {
+        publicKey: wallet.publicKey,
+        signTransaction: wallet.signTransaction,
+        signAllTransactions: wallet.signAllTransactions,
+      };
+  
+      const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
+      addLog("⚙️ Minting NFT...");
 
-      const transferInstruction = createTransferInstruction(
-        sourceTokenAccount,
-        destinationTokenAccount,
-        authorityPublicKey,
-        1,
-        [],
-        TOKEN_PROGRAM_ID
-      );
-      transaction.add(transferInstruction);
-
-      const { blockhash } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = userWallet;
-
-      // 🚨 Important: Do NOT partially sign the transaction yourself
-      // Phantom wants the transaction to be unsigned until passed to them
-
-      // Use Phantom's signAndSendTransaction method
-      const { signature } = await provider.signAndSendTransaction(transaction);
-      await connection.confirmTransaction(signature, "confirmed");
-
-      addLog(`🎉 NFT transferred to ${userWallet.toBase58()}`);
-      setMintedData({ address: mint.publicKey } as any);
-    } catch (err: any) {
-      console.error(err);
-      addLog(`❌ Mint or transfer failed: ${err.message}`);
+      console.log("mint authority", metaplex.identity().publicKey.toBase58());
+  
+      const { nft } = await metaplex.nfts().create({
+        uri: metadataUri,
+        name: "Cool NFT",
+        symbol: "COOL",
+        sellerFeeBasisPoints: 0, // 0% royalties
+        maxSupply: toBigNumber(1),
+        updateAuthority: metaplex.identity(), 
+        mintAuthority: metaplex.identity(),
+      });
+  
+      setMintedData(nft);
+      console.log("nft minted data", nft);
+      addLog(`✅ NFT minted! Mint address: ${nft.address.toBase58()}`);
+    } catch (error: any) {
+      console.error("❌ Mint failed:", error);
+      addLog(`❌ Mint failed: ${error.message}`);
     } finally {
       setIsMinting(false);
     }
-  }, [wallet, addLog]);
+  };
+  
 
   return (
     <div className="app">
@@ -184,7 +112,7 @@ const App = () => {
       {mintedData && (
         <div>
           <p>✅ NFT Minted!</p>
-          <p>Mint Address: {mintedData.address.toString()}</p>
+          <p>Mint Address: {mintedData.address.toBase58()}</p>
         </div>
       )}
 
@@ -200,30 +128,10 @@ const App = () => {
   );
 };
 
-const signAndSendTransaction = async (provider: PhantomProvider, transaction: Transaction): Promise<string> => {
-  try {
-    const { signature } = await provider.signAndSendTransaction(transaction);
-    return signature;
-  } catch (error) {
-    console.warn(error);
-    throw new Error(error.message);
-  }
-};
-
-// Poll signature status
-const pollSignatureStatus = async (signature: string, connection: Connection, addLog: (message: string) => void) => {
-  const status = await connection.getSignatureStatus(signature);
-  if (status.value?.confirmations) {
-    addLog(`✅ Transaction confirmed with ${status.value?.confirmations || 0} confirmations.`);
-  } else {
-    addLog(`⚠️ Transaction pending...`);
-  }
-};
-
 // Setup Providers
 const AppWithProviders = () => {
   const network = "mainnet-beta"; // or "mainnet-beta" based on your environment
-  const endpoint = useMemo(() => NETWORK, []);
+  const endpoint = useMemo(() => network, []);
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
