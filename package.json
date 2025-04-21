@@ -12,7 +12,11 @@
   "dependencies": {
     "@metaplex-foundation/js": "^0.20.1",
     "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
+    "@metaplex-foundation/umi": "^1.1.1",
+    "@metaplex-foundation/umi-bundle-defaults": "^1.1.1",
+    "@metaplex-foundation/umi-signer-wallet-adapters": "^1.2.0",
     "@metaplex/js": "^4.12.0",
+    "@noble/ed25519": "^2.2.3",
     "@solana/wallet-adapter-base": "^0.9.24",
     "@solana/wallet-adapter-phantom": "^0.9.25",
     "@solana/wallet-adapter-react": "^0.15.36",
