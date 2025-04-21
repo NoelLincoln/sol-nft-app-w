@@ -130,7 +130,7 @@ const App = () => {
 
 // Setup Providers
 const AppWithProviders = () => {
-  const network = "mainnet-beta"; // or "mainnet-beta" based on your environment
+  const network = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
   const endpoint = useMemo(() => network, []);
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
