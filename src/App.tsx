@@ -61,23 +61,23 @@
 //       setIsMinting(true);
 //       const metadataUri =
 //         "https://gateway.pinata.cloud/ipfs/bafkreiaqw52kv3rbs6gkqb27wpz3ga3qmmvfjkskbjzpmiyrrgmjklqkku";
-  
+
 //       if (!wallet?.publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
 //         addLog("⚠️ Wallet not connected properly.");
 //         return;
 //       }
-  
+
 //       const userSigner = {
 //         publicKey: wallet.publicKey,
 //         signTransaction: wallet.signTransaction,
 //         signAllTransactions: wallet.signAllTransactions,
 //       };
-  
+
 //       const metaplex = Metaplex.make(connection).use(walletAdapterIdentity(wallet));
 //       addLog("⚙️ Minting NFT...");
 
 //       console.log("mint authority", metaplex.identity().publicKey.toBase58());
-  
+
 //       const { nft } = await metaplex.nfts().create({
 //         uri: metadataUri,
 //         name: "Cool NFT",
@@ -87,7 +87,7 @@
 //         updateAuthority: metaplex.identity(), 
 //         mintAuthority: metaplex.identity(),
 //       });
-  
+
 //       setMintedData(nft);
 //       console.log("nft minted data", nft);
 //       addLog(`✅ NFT minted! Mint address: ${nft.address.toBase58()}`);
@@ -98,7 +98,7 @@
 //       setIsMinting(false);
 //     }
 //   };
-  
+
 
 //   return (
 //     <div className="app">
@@ -177,9 +177,9 @@ import { getAssociatedTokenAddress } from "@solana/spl-token";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
 
 // Setup Connection
-// const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
+const NETWORK = "https://mainnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
 // const NETWORK = "https://devnet.helius-rpc.com/?api-key=9c13c71d-3088-4fc4-bc03-7c7a270b0bcd";
-const NETWORK = "https://api.devnet.solana.com/";
+// const NETWORK = "https://api.devnet.solana.com/";
 const connection = new Connection(NETWORK, "confirmed");
 
 const App = () => {
